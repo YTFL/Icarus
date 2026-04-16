@@ -541,10 +541,8 @@
       import * as VapiModule from "https://esm.sh/@vapi-ai/web";
       const Vapi = VapiModule.default || VapiModule.Vapi;
 
-      // Keys moved to `.env` (do NOT commit). Load them via your backend or build system.
-      // For local development, keep secrets in `.env` and inject at build/runtime.
-      const vapi = new Vapi("");
-      const assistantId = "";
+      let vapi = null;
+      let assistantId = "";
 
       const micBtn = document.getElementById("micBtn");
       const micIcon = document.getElementById("micIcon");
@@ -552,6 +550,8 @@
       const centerStatus = document.getElementById("centerStatus");
       const chatLayout = document.getElementById("chatLayout");
       let isCallActive = false;
+      micBtn.disabled = true;
+      centerStatus.innerText = "Loading Voice Config...";
 
       // State Trackers for the streaming text
       let activeRole = null;
@@ -594,60 +594,116 @@
         chatLayout.scrollTop = chatLayout.scrollHeight;
       }
 
-      micBtn.addEventListener("click", () => {
+      micBtn.addEventListener("click", async () => {
+        if (!vapi || !assistantId) {
+          centerStatus.innerText = "Missing Voice Config";
+          return;
+        }
+
         if (!isCallActive) {
-          vapi.start(assistantId);
-          centerStatus.innerText = "Connecting to Core...";
-          micIcon.innerHTML =
-            '<path d="M12 4V2C6.48 2 2 6.48 2 12h2c0-4.42 3.58-8 8-8z"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></path>';
+          try {
+            centerStatus.innerText = "Connecting to Core...";
+            micIcon.innerHTML =
+              '<path d="M12 4V2C6.48 2 2 6.48 2 12h2c0-4.42 3.58-8 8-8z"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></path>';
+            await vapi.start(assistantId);
+          } catch (err) {
+            console.error("Failed to start Vapi:", err);
+            centerStatus.innerText = "Connection Error";
+            micBtn.className = "mic-btn";
+          }
         } else {
           vapi.stop();
         }
       });
 
-      vapi.on("call-start", () => {
-        isCallActive = true;
-        micBtn.className = "mic-btn active";
-        coreAnim.classList.add("active");
-        centerStatus.className = "status-text active";
-        centerStatus.innerText = "Icarus Active — Listening";
-        micIcon.innerHTML = '<path d="M6 6h12v12H6z"/>';
-      });
+      function registerVapiEvents() {
+        vapi.on("call-start", () => {
+          isCallActive = true;
+          micBtn.className = "mic-btn active";
+          coreAnim.classList.add("active");
+          centerStatus.className = "status-text active";
+          centerStatus.innerText = "Icarus Active — Listening";
+          micIcon.innerHTML = '<path d="M6 6h12v12H6z"/>';
+        });
 
-      vapi.on("call-end", () => {
-        isCallActive = false;
-        micBtn.className = "mic-btn";
-        coreAnim.classList.remove("active");
-        centerStatus.className = "status-text";
-        centerStatus.innerText = "System Standby";
-        micIcon.innerHTML =
-          '<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>';
+        vapi.on("call-end", () => {
+          isCallActive = false;
+          micBtn.className = "mic-btn";
+          coreAnim.classList.remove("active");
+          centerStatus.className = "status-text";
+          centerStatus.innerText = "System Standby";
+          micIcon.innerHTML =
+            '<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>';
 
-        // Reset state trackers on disconnect
-        activeRole = null;
-        activeBubble = null;
-        committedText = "";
-      });
+          // Reset state trackers on disconnect
+          activeRole = null;
+          activeBubble = null;
+          committedText = "";
+        });
 
-      vapi.on("message", (message) => {
-        // Only fire the logic on actual transcript updates
-        if (message.type === "transcript") {
-          handleTranscriptStream(message);
+        vapi.on("message", (message) => {
+          // Only fire the logic on actual transcript updates
+          if (message.type === "transcript") {
+            handleTranscriptStream(message);
 
-          // Keep the center stage status accurate
-          if (message.role === "user") {
-            centerStatus.innerText = "Receiving Audio...";
-          } else {
-            centerStatus.innerText = "Icarus Transmitting...";
+            // Keep the center stage status accurate
+            if (message.role === "user") {
+              centerStatus.innerText = "Receiving Audio...";
+            } else {
+              centerStatus.innerText = "Icarus Transmitting...";
+            }
+          }
+        });
+
+        vapi.on("error", (e) => {
+          centerStatus.innerText = "Connection Error";
+          coreAnim.classList.remove("active");
+          micBtn.className = "mic-btn";
+        });
+      }
+
+      async function fetchVoiceConfig() {
+        const candidates = ["/config", "http://127.0.0.1:8000/config"];
+        let lastError = "Unknown error";
+
+        for (const url of candidates) {
+          try {
+            const response = await fetch(url);
+            if (!response.ok) {
+              lastError = `${url} returned ${response.status}`;
+              continue;
+            }
+
+            const config = await response.json();
+            if (config.publicKey && config.assistantId) {
+              return config;
+            }
+
+            lastError = `${url} returned incomplete config`;
+          } catch (err) {
+            lastError = `${url} request failed`;
           }
         }
-      });
 
-      vapi.on("error", (e) => {
-        centerStatus.innerText = "Connection Error";
-        coreAnim.classList.remove("active");
-        micBtn.className = "mic-btn";
-      });
+        throw new Error(lastError);
+      }
+
+      async function initVapi() {
+        try {
+          const config = await fetchVoiceConfig();
+
+          vapi = new Vapi(config.publicKey);
+          assistantId = config.assistantId;
+          registerVapiEvents();
+          micBtn.disabled = false;
+          centerStatus.innerText = "System Standby";
+        } catch (err) {
+          console.error("Vapi init error:", err);
+          centerStatus.innerText = "Voice Config Error";
+        }
+      }
+
+      initVapi();
     </script>
   </body>
 </html>

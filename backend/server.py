@@ -27,6 +27,8 @@ app.add_middleware(
 # 🛑 Get these from cloud.qdrant.io
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+VAPI_PUBLIC_KEY = os.getenv("VAPI_PUBLIC_KEY") or os.getenv("VAPI_KEY")
+VAPI_ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID")
 missing = []
 if not QDRANT_URL:
     missing.append("QDRANT_URL")
@@ -50,6 +52,19 @@ except Exception:
 
 class RepoPayload(BaseModel):
     repo_url: str
+
+@app.get("/config")
+async def get_config():
+    if not VAPI_PUBLIC_KEY or not VAPI_ASSISTANT_ID:
+        raise HTTPException(
+            status_code=500,
+            detail="Missing Vapi configuration. Set VAPI_PUBLIC_KEY (or VAPI_KEY) and VAPI_ASSISTANT_ID in .env.",
+        )
+
+    return {
+        "publicKey": VAPI_PUBLIC_KEY,
+        "assistantId": VAPI_ASSISTANT_ID,
+    }
 
 @app.post("/ingest")
 async def ingest_repo(payload: RepoPayload):
