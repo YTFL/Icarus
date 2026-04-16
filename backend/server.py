@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import requests
 import zipfile
 import io
@@ -12,6 +13,8 @@ from qdrant_client.models import PointStruct, VectorParams, Distance
 from sentence_transformers import SentenceTransformer
 from hf_utils import parse_huggingface_repo
 
+load_dotenv()
+
 app = FastAPI()
 
 app.add_middleware(
@@ -22,8 +25,15 @@ app.add_middleware(
 )
 
 # 🛑 Get these from cloud.qdrant.io
-QDRANT_URL = os.getenv("QDRANT_URL", "https://bac8c5c6-52e9-43c8-bf77-dffe4cf7b2b8.europe-west3-0.gcp.cloud.qdrant.io")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6NzY3ZjQ1NjctZjhjMC00YmJlLWE2MWUtNDI4OTY4ODdmNTBjIn0.l19jv0VEQNl9_gAXsQRGyXXFznUW72eQQsBdz93KNEk")
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+missing = []
+if not QDRANT_URL:
+    missing.append("QDRANT_URL")
+if not QDRANT_API_KEY:
+    missing.append("QDRANT_API_KEY")
+if missing:
+    raise RuntimeError(f"Missing environment variables: {', '.join(missing)}. Add them to .env or set them in the environment.")
 
 qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 print("Loading 80MB embedding model...")
@@ -56,6 +66,7 @@ async def ingest_repo(payload: RepoPayload):
     if "huggingface.co" in base_url:
         try:
             hf_info, repo_id = parse_huggingface_repo(base_url)
+            print(f"Fetching Hugging Face metadata for: {repo_id}...")
             # Encode info
             vector = embedding_model.encode(hf_info).tolist()
             points.append(
@@ -66,6 +77,7 @@ async def ingest_repo(payload: RepoPayload):
                 )
             )
             qdrant.upsert(collection_name=COLLECTION_NAME, points=points)
+            print(f"Successfully indexed 1 chunks into Qdrant Cloud.")
             return {"status": f"Successfully indexed Hugging Face Model info for {repo_id}."}
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))

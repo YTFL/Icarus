@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Icarus | Code Companion</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="shortcut icon" href="favicon.svg">
     <style>
       :root {
         --bg: #000000;
@@ -119,6 +121,28 @@
         display: flex;
         align-items: center;
         gap: 6px;
+      }
+
+      .ingest-container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.3s ease;
+      }
+
+      .ingest-container.centered {
+        flex-direction: column;
+      }
+
+      .ingest-container.centered .repo-input {
+        width: 350px;
+        padding: 14px 20px;
+        font-size: 16px;
+      }
+
+      .ingest-container.centered .btn-index {
+        padding: 12px 32px;
+        font-size: 16px;
       }
 
       /* --- Center Stage & Functional Animation --- */
@@ -367,24 +391,7 @@
       </div>
       <div class="nav-controls">
         <div id="ingestStatus"></div>
-        <input
-          type="url"
-          id="repoUrl"
-          class="repo-input"
-          placeholder="GitHub Repository URL..."
-          autocomplete="off"
-        />
-        <button
-          type="button"
-          id="ingestBtn"
-          class="btn-index"
-          title="Index Database"
-        >
-          <svg viewBox="0 0 24 24">
-            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-          </svg>
-          Index
-        </button>
+        <div id="navIngestTarget"></div>
         <div
           style="
             width: 1px;
@@ -405,7 +412,7 @@
     </div>
 
     <div class="center-stage">
-      <div class="core-wrapper" id="coreAnim">
+      <div class="core-wrapper" id="coreAnim" style="display: none;">
         <div class="ring ring-1"></div>
         <div class="ring ring-2"></div>
         <div class="ring ring-3"></div>
@@ -421,7 +428,31 @@
           </svg>
         </button>
       </div>
-      <div id="centerStatus" class="status-text">System Standby</div>
+
+      <div id="centerIngestTarget">
+        <div id="ingestContainer" class="ingest-container centered">
+          <input
+            type="url"
+            id="repoUrl"
+            class="repo-input"
+            placeholder="Repository URL..."
+            autocomplete="off"
+          />
+          <button
+            type="button"
+            id="ingestBtn"
+            class="btn-index"
+            title="Index Database"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+            </svg>
+            Index
+          </button>
+        </div>
+      </div>
+
+      <div id="centerStatus" class="status-text">Awaiting Repository</div>
     </div>
 
     <div id="historyDrawer" class="history-drawer">
@@ -453,11 +484,16 @@
         const ingestBtn = document.getElementById("ingestBtn");
         const repoUrl = document.getElementById("repoUrl");
         const ingestStatus = document.getElementById("ingestStatus");
+        const centerStatus = document.getElementById("centerStatus");
 
         const url = repoUrl.value.trim();
         if (!url) return;
 
         ingestBtn.disabled = true;
+        
+        centerStatus.innerText = "Indexing Repository...";
+        centerStatus.classList.add("active");
+
         ingestStatus.style.color = "var(--text-muted)";
         ingestStatus.innerHTML =
           '<svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M12 4V2C6.48 2 2 6.48 2 12h2c0-4.42 3.58-8 8-8z"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></path></svg> Indexing...';
@@ -473,12 +509,23 @@
             ingestStatus.style.color = "#32D74B";
             ingestStatus.innerHTML =
               '<svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Database Ready';
-            document.getElementById("centerStatus").innerText =
-              "Context Loaded. Ready.";
+            
+            centerStatus.classList.remove("active");
+            centerStatus.innerText = "System Standby";
+
+            const ingestContainer = document.getElementById("ingestContainer");
+            ingestContainer.classList.remove("centered");
+            document.getElementById("navIngestTarget").appendChild(ingestContainer);
+            
+            document.getElementById("centerIngestTarget").style.display = "none";
+            document.getElementById("coreAnim").style.display = "flex";
+            
           } else {
             throw new Error("Ingest failed");
           }
         } catch (err) {
+          centerStatus.classList.remove("active");
+          centerStatus.innerText = "Indexing Failed";
           ingestStatus.style.color = "var(--danger)";
           ingestStatus.innerHTML = `Error`;
         } finally {
@@ -494,9 +541,10 @@
       import * as VapiModule from "https://esm.sh/@vapi-ai/web";
       const Vapi = VapiModule.default || VapiModule.Vapi;
 
-      // 🛑 PASTE YOUR REAL KEYS HERE 🛑
-      const vapi = new Vapi("e27aba30-7260-4ec8-a927-89185adcb702");
-      const assistantId = "ea06a0de-053e-4d31-9f06-c4983a277840";
+      // Keys moved to `.env` (do NOT commit). Load them via your backend or build system.
+      // For local development, keep secrets in `.env` and inject at build/runtime.
+      const vapi = new Vapi("");
+      const assistantId = "";
 
       const micBtn = document.getElementById("micBtn");
       const micIcon = document.getElementById("micIcon");
