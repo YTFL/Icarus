@@ -12,7 +12,15 @@ def parse_huggingface_repo(repo_url: str):
     if "huggingface.co/" not in repo_url:
         raise ValueError("Not a valid Hugging Face URL")
         
-    repo_id = repo_url.split("huggingface.co/")[-1]
+    repo_path = repo_url.split("huggingface.co/")[-1]
+    
+    # Strictly extract username and repo, ignoring /tree/main or parameters
+    repo_path = repo_path.split("?")[0]
+    parts = repo_path.split("/")
+    if len(parts) >= 2:
+        repo_id = f"{parts[0]}/{parts[1]}"
+    else:
+        repo_id = repo_path
     
     # We will query the models api
     api_url = f"https://huggingface.co/api/models/{repo_id}"
