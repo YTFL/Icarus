@@ -3,154 +3,464 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Icarus AI</title>
+    <title>Icarus | Code Companion</title>
     <style>
       :root {
-        --bg: #0d0d0d;
-        --surface: #1a1a1a;
-        --text: #f2f2f2;
-        --accent: #007aff;
-        --danger: #ff3b30;
+        --bg: #000000;
+        --surface: #151516;
+        --surface-hover: #2c2c2e;
+        --text: #f5f5f7;
+        --text-muted: #86868b;
+        --accent: #0a84ff;
+        --accent-glow: rgba(10, 132, 255, 0.4);
+        --danger: #ff453a;
+        --border: #333336;
       }
+
       body {
         font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-          Arial, sans-serif;
+          -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+          "Segoe UI", Roboto, sans-serif;
         background-color: var(--bg);
         color: var(--text);
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* --- Top Navigation --- */
+      .top-nav {
+        height: 70px;
+        padding: 0 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(21, 21, 22, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border);
+        z-index: 100;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.5px;
+      }
+      .brand svg {
+        width: 24px;
+        height: 24px;
+        fill: var(--text);
+      }
+
+      .nav-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .repo-input {
+        width: 250px;
+        padding: 10px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.5);
+        color: var(--text);
+        font-size: 14px;
+        outline: none;
+        transition: 0.2s;
+      }
+      .repo-input:focus {
+        border-color: var(--accent);
+        background: #000;
+      }
+
+      .btn-ghost,
+      .btn-index {
+        background: var(--surface-hover);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: 0.2s;
+      }
+      .btn-ghost:hover,
+      .btn-index:hover:not(:disabled) {
+        background: #3a3a3c;
+      }
+      .btn-index:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-ghost svg,
+      .btn-index svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+      }
+
+      #ingestStatus {
+        font-size: 13px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      /* --- Center Stage & Functional Animation --- */
+      .center-stage {
+        flex: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 100vh;
-        margin: 0;
-        text-align: center;
-      }
-      .container {
-        background: var(--surface);
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        width: 100%;
-        max-width: 400px;
-      }
-      h1 {
-        margin: 0 0 10px 0;
-        font-weight: 600;
-        letter-spacing: -1px;
-      }
-      p {
-        color: #888;
-        font-size: 14px;
-        margin-bottom: 30px;
-        line-height: 1.5;
+        position: relative;
       }
 
-      .input-group {
+      .core-wrapper {
+        position: relative;
+        width: 400px;
+        height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 1px dashed var(--border);
+        transition: all 0.5s ease;
+      }
+      .ring-1 {
+        width: 200px;
+        height: 200px;
+        animation: spin 20s linear infinite;
+      }
+      .ring-2 {
+        width: 280px;
+        height: 280px;
+        animation: spin-reverse 30s linear infinite;
+        opacity: 0.6;
+      }
+      .ring-3 {
+        width: 360px;
+        height: 360px;
+        animation: spin 40s linear infinite;
+        opacity: 0.3;
+      }
+
+      @keyframes spin {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes spin-reverse {
+        100% {
+          transform: rotate(-360deg);
+        }
+      }
+
+      .core-wrapper.active .ring {
+        border-color: var(--accent);
+        box-shadow: 0 0 20px var(--accent-glow) inset;
+      }
+      .core-wrapper.active .ring-1 {
+        animation: spin 5s linear infinite;
+      }
+      .core-wrapper.active .ring-2 {
+        animation: spin-reverse 8s linear infinite;
+        border: 1px solid rgba(10, 132, 255, 0.5);
+      }
+      .core-wrapper.active .ring-3 {
+        animation: spin 12s linear infinite;
+      }
+
+      .mic-btn {
+        position: relative;
+        z-index: 10;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      }
+      .mic-btn svg {
+        width: 40px;
+        height: 40px;
+        fill: currentColor;
+        transition: 0.3s;
+      }
+      .mic-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.05);
+      }
+
+      .mic-btn.active {
+        background: rgba(10, 132, 255, 0.15);
+        border-color: var(--accent);
+        color: var(--accent);
+        box-shadow: 0 0 40px var(--accent-glow);
+        transform: scale(1.1);
+      }
+
+      .status-text {
+        margin-top: 40px;
+        font-size: 16px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 500;
+        transition: 0.3s;
+      }
+      .status-text.active {
+        color: var(--accent);
+        text-shadow: 0 0 10px var(--accent-glow);
+      }
+
+      /* --- Slide-Out History Drawer --- */
+      .history-drawer {
+        position: fixed;
+        top: 70px;
+        right: 0;
+        bottom: 0;
+        width: 400px;
+        background: rgba(21, 21, 22, 0.85);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        border-left: 1px solid var(--border);
+        transform: translateX(100%);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        margin-bottom: 10px;
+        z-index: 90;
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
       }
-      input {
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid #333;
-        background: #000;
-        color: #fff;
-        font-size: 14px;
-        outline: none;
+
+      .history-drawer.open {
+        transform: translateX(0);
       }
-      input:focus {
-        border-color: var(--accent);
-      }
-      .action-btn {
-        padding: 12px;
-        border-radius: 8px;
-        border: none;
-        background: var(--accent);
-        color: white;
+
+      .drawer-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
         font-weight: 600;
+        font-size: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
         cursor: pointer;
-        transition: 0.2s;
+        padding: 4px;
       }
-      .action-btn:hover {
-        background: #006ae6;
+      .close-btn:hover {
+        color: var(--text);
       }
-      .action-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+      .close-btn svg {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
       }
-      #ingestStatus {
-        font-size: 12px;
-        color: #4cd964;
-        margin-top: 5px;
-        height: 15px;
+
+      .chat-layout {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .bubble-wrapper {
+        display: flex;
+        width: 100%;
+      }
+      .bubble-wrapper.user {
+        justify-content: flex-end;
+      }
+      .bubble-wrapper.ai {
+        justify-content: flex-start;
+      }
+
+      .bubble {
+        max-width: 85%;
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        white-space: pre-wrap; /* Keeps code formatting clean */
+      }
+      .user .bubble {
+        background: var(--accent);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+      }
+      .ai .bubble {
+        background: var(--surface-hover);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-bottom-left-radius: 4px;
+      }
+      .system-msg {
+        align-self: center;
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin: 10px 0;
+      }
+
+      /* The Animated Typing Cursor */
+      .typing-cursor {
+        display: inline-block;
+        width: 8px;
+        height: 14px;
+        background-color: var(--accent);
+        vertical-align: middle;
+        margin-left: 4px;
+        animation: blink 1s step-end infinite;
+        border-radius: 2px;
+      }
+      .user .typing-cursor {
+        background-color: #fff;
+      } /* White cursor for user bubble */
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>Icarus</h1>
-      <p>Voice AI Code Companion</p>
-
-      <div class="input-group">
+    <div class="top-nav">
+      <div class="brand">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 22h20L12 2zm0 3.8l7.2 14.2H4.8L12 5.8z" />
+        </svg>
+        Icarus
+      </div>
+      <div class="nav-controls">
+        <div id="ingestStatus"></div>
         <input
           type="url"
           id="repoUrl"
-          placeholder="https://github.com/Darkcoder-droid/repo-name"
+          class="repo-input"
+          placeholder="GitHub Repository URL..."
           autocomplete="off"
         />
         <button
           type="button"
           id="ingestBtn"
-          class="action-btn"
-          onclick="startIndexing()"
+          class="btn-index"
+          title="Index Database"
         >
-          Index GitHub Repo
+          <svg viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+          </svg>
+          Index
         </button>
-        <div id="ingestStatus"></div>
+        <div
+          style="
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            margin: 0 8px;
+          "
+        ></div>
+        <button type="button" id="historyToggleBtn" class="btn-ghost">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"
+            />
+          </svg>
+          History
+        </button>
       </div>
-
-      <p style="margin-top: 20px; color: #555">
-        Once the repository is indexed, click the floating button in the bottom
-        right corner to talk to Icarus!
-      </p>
     </div>
 
-    <script
-      src="https://unpkg.com/@vapi-ai/client-sdk-react/dist/embed/widget.umd.js"
-      async
-      type="text/javascript"
-    ></script>
+    <div class="center-stage">
+      <div class="core-wrapper" id="coreAnim">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
 
-    <vapi-widget
-      public-key="e27aba30-7260-4ec8-a927-89185adcb702"
-      assistant-id="ea06a0de-053e-4d31-9f06-c4983a277840"
-      mode="voice"
-      theme="dark"
-      position="bottom-right"
-    ></vapi-widget>
+        <button id="micBtn" class="mic-btn" title="Initialize Session">
+          <svg id="micIcon" viewBox="0 0 24 24">
+            <path
+              d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
+            />
+            <path
+              d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+            />
+          </svg>
+        </button>
+      </div>
+      <div id="centerStatus" class="status-text">System Standby</div>
+    </div>
+
+    <div id="historyDrawer" class="history-drawer">
+      <div class="drawer-header">
+        Session Transcript
+        <button class="close-btn" id="closeDrawerBtn">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+            />
+          </svg>
+        </button>
+      </div>
+      <div id="chatLayout" class="chat-layout">
+        <div class="system-msg">History Log Initialized</div>
+      </div>
+    </div>
 
     <script>
-      // Hardwired function that cannot be bypassed by browser quirks
+      const drawer = document.getElementById("historyDrawer");
+      document
+        .getElementById("historyToggleBtn")
+        .addEventListener("click", () => drawer.classList.toggle("open"));
+      document
+        .getElementById("closeDrawerBtn")
+        .addEventListener("click", () => drawer.classList.remove("open"));
+
       async function startIndexing() {
         const ingestBtn = document.getElementById("ingestBtn");
         const repoUrl = document.getElementById("repoUrl");
         const ingestStatus = document.getElementById("ingestStatus");
 
         const url = repoUrl.value.trim();
-
-        if (!url) {
-          ingestStatus.style.color = "var(--danger)";
-          ingestStatus.innerText = "Please enter a valid GitHub URL";
-          return;
-        }
+        if (!url) return;
 
         ingestBtn.disabled = true;
-        ingestBtn.innerText = "⏳ Downloading & Indexing...";
-        ingestStatus.style.color = "#888";
-        ingestStatus.innerText = "Check Python terminal for progress...";
+        ingestStatus.style.color = "var(--text-muted)";
+        ingestStatus.innerHTML =
+          '<svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M12 4V2C6.48 2 2 6.48 2 12h2c0-4.42 3.58-8 8-8z"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></path></svg> Indexing...';
 
         try {
           const response = await fetch("http://127.0.0.1:8000/ingest", {
@@ -159,22 +469,137 @@
             body: JSON.stringify({ repo_url: url }),
           });
 
-          const data = await response.json();
           if (response.ok) {
-            ingestStatus.style.color = "#4cd964";
-            ingestStatus.innerText = "✓ Repository Indexed!";
-            ingestBtn.innerText = "Index Another Repo";
+            ingestStatus.style.color = "#32D74B";
+            ingestStatus.innerHTML =
+              '<svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Database Ready';
+            document.getElementById("centerStatus").innerText =
+              "Context Loaded. Ready.";
           } else {
-            throw new Error(data.detail || "Ingest failed");
+            throw new Error("Ingest failed");
           }
         } catch (err) {
           ingestStatus.style.color = "var(--danger)";
-          ingestStatus.innerText = "Error: " + err.message;
-          ingestBtn.innerText = "Try Again";
+          ingestStatus.innerHTML = `Error`;
         } finally {
           ingestBtn.disabled = false;
         }
       }
+      document
+        .getElementById("ingestBtn")
+        .addEventListener("click", startIndexing);
+    </script>
+
+    <script type="module">
+      import * as VapiModule from "https://esm.sh/@vapi-ai/web";
+      const Vapi = VapiModule.default || VapiModule.Vapi;
+
+      // 🛑 PASTE YOUR REAL KEYS HERE 🛑
+      const vapi = new Vapi("e27aba30-7260-4ec8-a927-89185adcb702");
+      const assistantId = "ea06a0de-053e-4d31-9f06-c4983a277840";
+
+      const micBtn = document.getElementById("micBtn");
+      const micIcon = document.getElementById("micIcon");
+      const coreAnim = document.getElementById("coreAnim");
+      const centerStatus = document.getElementById("centerStatus");
+      const chatLayout = document.getElementById("chatLayout");
+      let isCallActive = false;
+
+      // State Trackers for the streaming text
+      let activeRole = null;
+      let activeBubble = null;
+      let committedText = "";
+
+      function handleTranscriptStream(message) {
+        // Standardize the role identifier
+        const role = message.role === "user" ? "user" : "ai";
+
+        // If the speaker changes, create a new bubble container
+        if (activeRole !== role || !activeBubble) {
+          const wrapper = document.createElement("div");
+          wrapper.className = `bubble-wrapper ${role}`;
+
+          activeBubble = document.createElement("div");
+          activeBubble.className = "bubble";
+
+          wrapper.appendChild(activeBubble);
+          chatLayout.appendChild(wrapper);
+
+          activeRole = role;
+          committedText = ""; // Reset the saved text for the new speaker
+        }
+
+        // If Vapi is streaming the sentence word-by-word
+        if (message.transcriptType === "partial") {
+          activeBubble.innerHTML =
+            (committedText ? committedText + " " : "") +
+            message.transcript +
+            '<span class="typing-cursor"></span>';
+        }
+        // If Vapi says this specific sentence is finished
+        else if (message.transcriptType === "final") {
+          committedText += (committedText ? " " : "") + message.transcript;
+          activeBubble.innerHTML = committedText; // Removes cursor from finished sentence
+        }
+
+        // Always force the history drawer to scroll to the bottom
+        chatLayout.scrollTop = chatLayout.scrollHeight;
+      }
+
+      micBtn.addEventListener("click", () => {
+        if (!isCallActive) {
+          vapi.start(assistantId);
+          centerStatus.innerText = "Connecting to Core...";
+          micIcon.innerHTML =
+            '<path d="M12 4V2C6.48 2 2 6.48 2 12h2c0-4.42 3.58-8 8-8z"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></path>';
+        } else {
+          vapi.stop();
+        }
+      });
+
+      vapi.on("call-start", () => {
+        isCallActive = true;
+        micBtn.className = "mic-btn active";
+        coreAnim.classList.add("active");
+        centerStatus.className = "status-text active";
+        centerStatus.innerText = "Icarus Active — Listening";
+        micIcon.innerHTML = '<path d="M6 6h12v12H6z"/>';
+      });
+
+      vapi.on("call-end", () => {
+        isCallActive = false;
+        micBtn.className = "mic-btn";
+        coreAnim.classList.remove("active");
+        centerStatus.className = "status-text";
+        centerStatus.innerText = "System Standby";
+        micIcon.innerHTML =
+          '<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>';
+
+        // Reset state trackers on disconnect
+        activeRole = null;
+        activeBubble = null;
+        committedText = "";
+      });
+
+      vapi.on("message", (message) => {
+        // Only fire the logic on actual transcript updates
+        if (message.type === "transcript") {
+          handleTranscriptStream(message);
+
+          // Keep the center stage status accurate
+          if (message.role === "user") {
+            centerStatus.innerText = "Receiving Audio...";
+          } else {
+            centerStatus.innerText = "Icarus Transmitting...";
+          }
+        }
+      });
+
+      vapi.on("error", (e) => {
+        centerStatus.innerText = "Connection Error";
+        coreAnim.classList.remove("active");
+        micBtn.className = "mic-btn";
+      });
     </script>
   </body>
 </html>
